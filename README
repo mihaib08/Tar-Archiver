@@ -1,0 +1,18 @@
+// Copyright of Mihai-Eugen Barbu
+// 315CA
+
+Tema 3 - Fisiere, stringuri si structuri
+Problema Archiver
+
+--> Pentru Cerinta 0:
+    Dupa ce identific una din instructiunile instr = {create, list, extract}, apelez functia corespunzatoare de tipul check_instr. Am spart comanda data in cuvinte pentru a verifica daca are structura adecvata pentru instr. In plus, in cazul in care ne aflam la o comanda de create, verific daca fisierul files.txt este gol, caz in care afisez mesajul "Failed", iar daca are continut, trecem la rezolvarea cerintei 1.
+
+--> Pentru Cerinta 1: // rezolvata prin apelarea functiei res_create()
+    Se apeleaza din main() functia res_create() in care sunt identificate mai intai numele arhivei si al directorului care contine fisierele, dupa care, pentru fiecare citire a unei linii din files.txt, sunt preluate, prin spargere in cuvinte, informatiile ce trebuie completate in header-ul fisierului corespunzator acelei linii, aceste informatii fiind retinute in variabila rec de tipul union record, care este completata prin intermediul functiei fill_union(). Apoi este adaugat continutul fisierului (caracter cu caracter prin citirea fisierului in mod binar) in arhiva si se realizeaza completarea cu '\0' (daca rec.header.size in decimal nu este divizibil cu 512) pana la atingerea unui multiplu de 512.
+
+--> Pentru Cerinta 2: // rezolvata in res_list()
+    Se stie ca primul header este chiar prima informatie din fisierul arhiva. De aceea citesc primul header, ii identific dimensiunea in variabila sz (care este convertita in decimal) si astfel ma pot plasa in fisier pe urmatorul header, realizand acest proces pana ajung la zona de 512 octeti de 0 corespunzatoare sfarsitului arhivei.
+
+--> Pentru Cerinta 3: // rezolvata in res_extract()
+    Asemanator ca la res_list(), se realizeaza identificarea fiecarui header din arhiva, iar cand headerul pe care ma aflu este cel corespunzator fisierului care trebuie extras (adica are la name denumirea fisierului necesar), scriu continutul fisierului in fisierul cerut (de tipul extracted_nume_fisier) si opresc functia.
+

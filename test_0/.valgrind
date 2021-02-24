@@ -1,0 +1,58 @@
+==21356== Memcheck, a memory error detector
+==21356== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==21356== Using Valgrind-3.15.0 and LibVEX; rerun with -h for copyright info
+==21356== Command: ./archiver
+==21356== Parent PID: 21315
+==21356== 
+==21356== Invalid write of size 1
+==21356==    at 0x483DC4C: strcat (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==21356==    by 0x10A198: extract (in /darius/git/pc/homeworks/2019/h3/archiver)
+==21356==    by 0x10A4E2: main (in /darius/git/pc/homeworks/2019/h3/archiver)
+==21356==  Address 0x4a684fb is 0 bytes after a block of size 11 alloc'd
+==21356==    at 0x483A7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==21356==    by 0x491553E: strdup (strdup.c:42)
+==21356==    by 0x10A178: extract (in /darius/git/pc/homeworks/2019/h3/archiver)
+==21356==    by 0x10A4E2: main (in /darius/git/pc/homeworks/2019/h3/archiver)
+==21356== 
+==21356== Invalid write of size 1
+==21356==    at 0x483DC5E: strcat (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==21356==    by 0x10A198: extract (in /darius/git/pc/homeworks/2019/h3/archiver)
+==21356==    by 0x10A4E2: main (in /darius/git/pc/homeworks/2019/h3/archiver)
+==21356==  Address 0x4a684ff is 4 bytes after a block of size 11 alloc'd
+==21356==    at 0x483A7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==21356==    by 0x491553E: strdup (strdup.c:42)
+==21356==    by 0x10A178: extract (in /darius/git/pc/homeworks/2019/h3/archiver)
+==21356==    by 0x10A4E2: main (in /darius/git/pc/homeworks/2019/h3/archiver)
+==21356== 
+==21356== Syscall param openat(filename) points to unaddressable byte(s)
+==21356==    at 0x4983FDB: open (open64.c:48)
+==21356==    by 0x4906175: _IO_file_open (fileops.c:189)
+==21356==    by 0x4906439: _IO_file_fopen@@GLIBC_2.2.5 (fileops.c:281)
+==21356==    by 0x48F8A5D: __fopen_internal (iofopen.c:75)
+==21356==    by 0x48F8A5D: fopen@@GLIBC_2.2.5 (iofopen.c:86)
+==21356==    by 0x10A1AE: extract (in /darius/git/pc/homeworks/2019/h3/archiver)
+==21356==    by 0x10A4E2: main (in /darius/git/pc/homeworks/2019/h3/archiver)
+==21356==  Address 0x4a684fb is 0 bytes after a block of size 11 alloc'd
+==21356==    at 0x483A7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==21356==    by 0x491553E: strdup (strdup.c:42)
+==21356==    by 0x10A178: extract (in /darius/git/pc/homeworks/2019/h3/archiver)
+==21356==    by 0x10A4E2: main (in /darius/git/pc/homeworks/2019/h3/archiver)
+==21356== 
+==21356== 
+==21356== HEAP SUMMARY:
+==21356==     in use at exit: 512 bytes in 1 blocks
+==21356==   total heap usage: 7 allocs, 6 frees, 13,787 bytes allocated
+==21356== 
+==21356== 512 bytes in 1 blocks are possibly lost in loss record 1 of 1
+==21356==    at 0x483A7F3: malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==21356==    by 0x10A3DD: main (in /darius/git/pc/homeworks/2019/h3/archiver)
+==21356== 
+==21356== LEAK SUMMARY:
+==21356==    definitely lost: 0 bytes in 0 blocks
+==21356==    indirectly lost: 0 bytes in 0 blocks
+==21356==      possibly lost: 512 bytes in 1 blocks
+==21356==    still reachable: 0 bytes in 0 blocks
+==21356==         suppressed: 0 bytes in 0 blocks
+==21356== 
+==21356== For lists of detected and suppressed errors, rerun with: -s
+==21356== ERROR SUMMARY: 7 errors from 4 contexts (suppressed: 0 from 0)

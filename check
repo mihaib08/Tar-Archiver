@@ -1,0 +1,349 @@
+#!/bin/bash
+# Copyright 2019 Darius Neatu (neatudarius@gmail.com)
+
+# set -e
+# set -x
+
+MY_TAR="my_archive.tar"
+REAL_TAR="real_archive.tar"
+
+function setup_test()
+{
+	if [ $# -lt 1 ]; then
+		echo "Usage: setup_test files_to_be_added"
+		exit 1
+	fi
+
+	if [ ! -f archiver ]; then
+		ln -s ../archiver archiver
+	fi
+
+	cat /etc/passwd > usermap.txt
+	ls -la --time-style=full-iso $@ | grep '^-' > files.txt
+}
+
+function clean_test()
+{
+	rm -f usermap.txt
+	rm -f archiver
+	rm -f files.txt
+}
+
+function test_create_archive()
+{
+	local score=8
+	echo -e "create ${MY_TAR} ./\nexit" | ${TOOL}  &> /dev/null
+	if [ $? -ne 0 ]; then
+		printf "%30s %02d/%02d\n" "archive" 0 ${score}
+		return 0
+	fi
+
+	code=0
+	mkdir out
+	tar -xvf ${MY_TAR} -C out &> /dev/null
+
+	for file in $@; do
+		diff $file out/$file
+		if [ $? -ne 0 ]; then
+			code=$(($code + 1))
+		fi
+	done
+
+	rm -rf out
+	rm -f ${MY_TAR}
+
+	if [ $code -eq 0 ]; then
+		printf "%30s %02d/%02d\n" "archive" ${score} ${score}
+		return ${score}
+	else
+		printf "%30s %02d/%02d\n" "archive" 0 ${score}
+		return 0
+	fi
+}
+
+function test_list_files()
+{
+	local score=4
+
+	echo -e "create ${MY_TAR} ./\nexit" | ${TOOL}  &> /dev/null
+	if [ $? -ne 0 ]; then
+		printf "%30s %02d/%02d\n" "list" 0 ${score}
+		return 0
+	fi
+	tar --format=ustar -cvf ${REAL_TAR} $@ &> /dev/null
+	echo $@ > output.ref.tmp
+	
+	sed -e 's/\s\+/\n/g' output.ref.tmp > output.ref2.tmp
+	sed -e 's/^/> /g' output.ref2.tmp > output.ref
+
+	echo -e "list ${MY_TAR}\nexit" | ${TOOL} > output.archiver
+	if [ $? -ne 0 ]; then
+		printf "%30s %02d/%02d\n" "list" 0 ${score}
+		return 0
+	fi
+	echo -e "list ${REAL_TAR}\nexit" | ${TOOL} > output.tar
+	if [ $? -ne 0 ]; then
+		printf "%30s %02d/%02d\n" "list" 0 ${score}
+		return 0
+	fi
+
+	code=0
+
+	diff -wB output.ref output.archiver
+	if [ $? -eq 0 ]; then
+		code=$(($code + 1))
+	fi
+
+	diff -wB output.ref output.tar
+	if [ $? -eq 0 ]; then
+		code=$(($code + 1))
+	fi
+
+	rm -f output.*
+	rm -f ${MY_TAR}
+	rm -f ${REAL_TAR}
+
+	if [ $code -ne 0 ]; then
+		printf "%30s %02d/%02d\n" "list" ${score} ${score}
+		return ${score}
+	else
+		printf "%30s %02d/%02d\n" "list" 0 ${score}
+		return 0
+	fi
+}
+
+function test_extraction()
+{
+	local score=2
+	code=0
+	archive_name=$1
+	shift
+
+	for file in $@; do
+		echo -e "extract $file $archive_name\nexit" | ${TOOL}  &> /dev/null
+		if [ $? -ne 0 ]; then
+			rm -f extracted_*
+			return 0
+		fi
+		diff $file "extracted_$file"
+		if [ $? -ne 0 ]; then
+			rm -f extracted_*
+			code=$(($code+1))
+			return 0
+		fi
+	done
+
+	rm -f extracted_*
+	return ${score}
+}
+
+function test_extraction_1()
+{
+	echo -e "create ${MY_TAR} ./\nexit" | ${TOOL}  &> /dev/null
+
+	test_extraction ${MY_TAR} $@
+	result=$?
+
+	rm -f ${MY_TAR}
+
+	printf "%30s %02d/%02d\n" "extract (${MY_TAR})" ${result} 2
+	return $result
+}
+
+function test_extraction_2()
+{
+	tar --format=ustar -cvf ${REAL_TAR} $@ &> /dev/null
+
+	test_extraction ${REAL_TAR} $@
+	result=$?
+
+	rm -f ${REAL_TAR}
+
+	printf "%30s %02d/%02d\n" "extract (${REAL_TAR})" ${result} 2
+	return $result
+}
+
+function run_test()
+{
+	echo "=========================================="
+	echo "Running $1"
+
+	if [ $# -lt 1 ]; then
+		echo "Usage: run_test test_{i}"
+		exit 1
+	fi
+
+	if [ ! -d $1 ]; then
+		echo "Usage: run_test test_{i}"
+		exit 1
+	fi
+
+	TEST="$1"
+	if [[ "${VALGRIND}" = "no" ]]; then
+		TOOL="timeout 10s ./archiver "
+	else
+		TOOL="timeout 60s valgrind --leak-check=full --log-file=../log/${TEST}.valgrind --error-exitcode=69 ./archiver"
+	fi
+
+	pushd $1 &> /dev/null
+	shift
+	setup_test $@
+
+	test_create_archive $@
+	sum=$(($sum + $?))
+
+	test_list_files $@
+	sum=$(($sum + $?))
+
+	test_extraction_1 $@
+	sum=$(($sum + $?))
+	
+	test_extraction_2 $@
+	sum=$(($sum + $?))
+	
+	clean_test
+	popd &> /dev/null
+}
+
+function check_cs_errors()
+{
+    ./check_utils/external/cpp/cpplint.py *.h *.c 2> tmp
+    cnt_cs=`cat tmp | grep "Total errors found" | cut -d ':' -f2 | cut -d ' ' -f2`
+}
+
+function check_coding_style()
+{
+	echo ""
+    echo "=====================>>>>>> Coding style <<<<<< ====================="
+
+    cnt_cs=0
+    check_cs_errors
+
+    if (( cnt_cs > 0 )); then
+        cat tmp | tail -20
+
+        echo ""
+        echo "${cnt_cs} erori de CS. (0p)"
+        echo ""
+    else
+        echo "No CS erros automatically detected. Final grade will be set after manual check."
+
+		if [[ "${total}" != "100.00" ]]; then
+			echo "CS points: 0p bonus (${total}/100 p required for bonus)."
+	        total=$(bc <<< "${total} + 0")
+		else 
+			cs_sum=20
+			echo "CS points: 20p bonus"
+	        total=$(bc <<< "${total} + 20")
+		fi
+    fi
+    rm -f tmp
+
+	echo ""
+    echo "=====================>>>>>> Coding style <<<<<< ====================="
+}
+
+function check_readme()
+{
+    README=README
+
+	echo ""
+    echo "========================>>>>>>   Checking for ${README}   <<<<<< ==================="
+
+    if [ ! -f $README ]; then
+        echo "${README} is missing (penalty -5p)."
+        total=$(bc <<< "${total} - 5")
+    elif [ -f $README ] && [ "`ls -l ${README} | awk '{print $5}'`" == "0" ]; then
+        echo "${README} detected. Final grade will be set after manual check."
+    fi
+
+	echo ""
+    echo "========================>>>>>>  Checking for  ${README}    <<<<<< ==================="
+}
+
+
+# check if Makefile exists
+if [ ! -f Makefile ]; then
+	echo "Makefile lipsa. STOP"
+	exit 1
+fi
+
+# clean and check errors
+make -f Makefile clean &> out.make
+if [ ! 0 -eq $? ]; then
+	cat out.make
+	rm -f out.make
+	
+	echo "Make erorr (clean). STOP"
+	exit 1
+fi
+
+# compile and check errors
+make -f Makefile build &> out.make
+if [ ! 0 -eq $? ]; then
+	cat out.make
+	rm -f out.make
+	
+	echo "Make erorr (build). STOP"
+	exit 1
+fi
+
+penalty_warnings=0
+cnt=$(cat out.make | grep warning | wc -l)
+if [ $cnt -gt 0 ]; then
+    echo "========================>>>>>>    Checking for warnings   <<<<<< ==================="
+	penalty_warnings=-5
+	cat out.make
+	rm -f out.make
+
+	echo "Make warnings (penalty -5p)."
+    echo "========================>>>>>>    Checking for warnings   <<<<<< ==================="
+	echo ""
+else
+	# just for info
+	cat out.make
+	rm -f out.make
+fi
+
+rm -rf log/
+mkdir log/
+
+echo ""
+echo "============================ Testing (80p) ====================="
+VALGRIND=no
+sum=$(bc <<< "0 + ${penalty_warnings}")
+
+run_test test_0 empty
+run_test test_1 a b
+run_test test_2 1 2 3 4 5 6 7 8 9
+run_test test_3 mars1.jpg mars2.jpg mars3.jpg mars4.jpg
+run_test test_4 1.jpg 2.jpg 3.jpg 4.jpg 5.jpg 6.jpg 7.jpg 8.jpg 9.jpg 
+
+base_sum=${sum}
+
+echo "====================>>>>>> test points: ${base_sum}/80  <<<<<<======================"
+echo "==========================================================================="
+
+echo ""
+echo "============================ Testing with valgrind (scaled to 20p) ========================"
+VALGRIND=yes
+sum=0
+
+run_test test_0 empty
+run_test test_1 a b
+run_test test_2 1 2 3 4 5 6 7 8 9
+run_test test_3 mars1.jpg mars2.jpg mars3.jpg mars4.jpg
+run_test test_4 1.jpg 2.jpg 3.jpg 4.jpg 5.jpg 6.jpg 7.jpg 8.jpg 9.jpg 
+
+valgrind_sum=$(bc <<< "${sum} * 0.25")
+echo "====================>>>>>> valgrind points: ${valgrind_sum}/20  <<<<<<======================"
+echo "==========================================================================="
+
+total=$(bc <<< "0 + ${base_sum} + ${valgrind_sum}")
+
+check_coding_style
+check_readme
+
+echo ""
+echo "====================>>>>>> Total: ${total}/100  <<<<<<======================"
+echo ""
